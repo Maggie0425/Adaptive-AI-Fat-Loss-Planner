@@ -16,6 +16,8 @@ The hosted demo uses the deterministic mock planner unless an OpenAI API key is
 configured. Render's free web service can take 50 seconds or more to wake after
 inactivity, and its free PostgreSQL database expires after 30 days.
 
+![Adaptive AI Fat-Loss Planner dashboard](docs/assets/app-hero.png)
+
 ## Product idea
 
 Most fitness apps produce a static plan. This project is built around a weekly
