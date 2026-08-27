@@ -13,9 +13,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
+        value: http://localhost:5173
       - key: OPENAI_MODEL
         value: gpt-5-mini
 databases:
