@@ -2,6 +2,7 @@ services:
   - type: web
     name: adaptive-planner-api
     runtime: docker
+    plan: free
     rootDir: backend
     healthCheckPath: /health
     envVars:
@@ -19,5 +20,6 @@ services:
         value: gpt-5-mini
 databases:
   - name: adaptive-planner-db
+    plan: free
     databaseName: adaptive_planner
     user: adaptive_planner
