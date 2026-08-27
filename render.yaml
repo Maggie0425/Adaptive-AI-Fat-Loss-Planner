@@ -13,7 +13,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        value: http://localhost:5173
+        value: http://localhost:5173,https://adaptive-ai-fat-loss-planner-fronte.vercel.app
       - key: OPENAI_MODEL
         value: gpt-5-mini
 databases:
