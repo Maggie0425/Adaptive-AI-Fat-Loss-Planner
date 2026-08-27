@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: adaptive-planner-api
+    runtime: docker
+    rootDir: backend
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: adaptive-planner-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5-mini
+databases:
+  - name: adaptive-planner-db
+    databaseName: adaptive_planner
+    user: adaptive_planner

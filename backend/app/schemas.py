@@ -27,6 +27,7 @@ class ProfileCreate(ProfileInput):
     email: EmailStr
     dietary_preferences: str = Field(default="", max_length=500)
     training_days: int = Field(default=3, ge=1, le=7)
+    password: str = Field(min_length=10, max_length=128)
 
 
 class ProfileUpdate(ProfileInput):
@@ -35,11 +36,25 @@ class ProfileUpdate(ProfileInput):
     training_days: int = Field(default=3, ge=1, le=7)
 
 
-class ProfileResponse(ProfileCreate):
-    model_config = ConfigDict(from_attributes=True)
+class ProfileResponse(ProfileInput):
     id: int
     user_id: int
+    name: str
+    email: EmailStr
+    dietary_preferences: str
+    training_days: int
     calculations: CalculationResult
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    user: ProfileResponse
 
 
 class MealSuggestion(BaseModel):
@@ -100,3 +115,16 @@ class CheckInResponse(CheckInCreate):
 class AdaptationResponse(BaseModel):
     check_in: CheckInResponse
     next_plan: WeeklyPlanResponse
+
+
+class DashboardPoint(BaseModel):
+    week_number: int
+    weight_kg: float | None
+    adherence_percent: float | None
+    calorie_target_kcal: int
+    hunger_level: int | None
+    energy_level: int | None
+
+
+class DashboardResponse(BaseModel):
+    points: list[DashboardPoint]

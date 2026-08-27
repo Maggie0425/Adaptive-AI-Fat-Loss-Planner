@@ -41,7 +41,7 @@ class OpenAIPlanProvider:
     def __init__(self) -> None:
         from openai import OpenAI
 
-        self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+        self.client = OpenAI(api_key=os.environ["OPENAI_API_KEY"], timeout=20.0, max_retries=2)
         self.model = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 
     def generate(self, profile: Profile, calorie_target: int, context: str) -> PlanContent:
@@ -70,4 +70,18 @@ class OpenAIPlanProvider:
 
 
 def get_plan_provider() -> PlanProvider:
-    return OpenAIPlanProvider() if os.getenv("OPENAI_API_KEY") else MockPlanProvider()
+    return ResilientPlanProvider() if os.getenv("OPENAI_API_KEY") else MockPlanProvider()
+
+
+class ResilientPlanProvider:
+    def __init__(self) -> None:
+        self.primary = OpenAIPlanProvider()
+        self.fallback = MockPlanProvider()
+        self.source = "openai"
+
+    def generate(self, profile: Profile, calorie_target: int, context: str) -> PlanContent:
+        try:
+            return self.primary.generate(profile, calorie_target, context)
+        except Exception:
+            self.source = "mock-fallback"
+            return self.fallback.generate(profile, calorie_target, f"AI generation was unavailable. {context}")

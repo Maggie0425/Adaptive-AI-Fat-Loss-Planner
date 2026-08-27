@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,12 +7,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.adaptation import adapt_calorie_target
+from app.adaptation import safe_adaptation
+from app.auth import create_access_token, get_current_user, hash_password, require_owner, verify_password
 from app.calculator import calculate
 from app.database import Base, engine, get_db
 from app.models import CheckIn, Profile, User, WeeklyPlan
 from app.planner import get_plan_provider
-from app.schemas import AdaptationResponse, CalculationResult, CheckInCreate, CheckInResponse
+from app.schemas import AdaptationResponse, CalculationResult, CheckInCreate, CheckInResponse, DashboardPoint, DashboardResponse
+from app.schemas import LoginRequest, TokenResponse
 from app.schemas import PlanContent, ProfileCreate, ProfileInput, ProfileResponse, ProfileUpdate
 from app.schemas import WeeklyPlanResponse
 
@@ -25,7 +28,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="Adaptive AI Fat-Loss Planner API", version="0.2.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -73,22 +76,32 @@ def create_calculation(profile: ProfileInput) -> CalculationResult:
 def create_profile(payload: ProfileCreate, db: Session = Depends(get_db)) -> ProfileResponse:
     if db.scalar(select(User).where(User.email == str(payload.email))):
         raise HTTPException(status_code=409, detail="A profile with this email already exists")
-    user = User(name=payload.name, email=str(payload.email))
-    user.profile = Profile(**payload.model_dump(exclude={"name", "email"}))
+    user = User(name=payload.name, email=str(payload.email), hashed_password=hash_password(payload.password))
+    user.profile = Profile(**payload.model_dump(exclude={"name", "email", "password"}))
     db.add(user)
     db.commit()
     db.refresh(user)
     return profile_response(user, user.profile)
 
 
+@app.post("/api/v1/auth/login", response_model=TokenResponse)
+def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    user = db.scalar(select(User).where(User.email == str(payload.email)))
+    if not user or not verify_password(payload.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    return TokenResponse(access_token=create_access_token(user.id), user=profile_response(user, user.profile))
+
+
 @app.get("/api/v1/profiles/{user_id}", response_model=ProfileResponse)
-def get_profile(user_id: int, db: Session = Depends(get_db)) -> ProfileResponse:
+def get_profile(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> ProfileResponse:
+    require_owner(user_id, current_user)
     user = get_user_or_404(user_id, db)
     return profile_response(user, user.profile)
 
 
 @app.put("/api/v1/profiles/{user_id}", response_model=ProfileResponse)
-def update_profile(user_id: int, payload: ProfileUpdate, db: Session = Depends(get_db)) -> ProfileResponse:
+def update_profile(user_id: int, payload: ProfileUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> ProfileResponse:
+    require_owner(user_id, current_user)
     user = get_user_or_404(user_id, db)
     user.name = payload.name
     for key, value in payload.model_dump(exclude={"name"}).items():
@@ -99,7 +112,8 @@ def update_profile(user_id: int, payload: ProfileUpdate, db: Session = Depends(g
 
 
 @app.post("/api/v1/users/{user_id}/plans", response_model=WeeklyPlanResponse, status_code=201)
-def create_initial_plan(user_id: int, db: Session = Depends(get_db)) -> WeeklyPlanResponse:
+def create_initial_plan(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> WeeklyPlanResponse:
+    require_owner(user_id, current_user)
     user = get_user_or_404(user_id, db)
     if db.scalar(select(WeeklyPlan).where(WeeklyPlan.user_id == user_id, WeeklyPlan.week_number == 1)):
         raise HTTPException(status_code=409, detail="Week 1 plan already exists")
@@ -118,14 +132,16 @@ def create_initial_plan(user_id: int, db: Session = Depends(get_db)) -> WeeklyPl
 
 
 @app.get("/api/v1/users/{user_id}/plans", response_model=list[WeeklyPlanResponse])
-def list_plans(user_id: int, db: Session = Depends(get_db)) -> list[WeeklyPlanResponse]:
+def list_plans(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[WeeklyPlanResponse]:
+    require_owner(user_id, current_user)
     get_user_or_404(user_id, db)
     plans = db.scalars(select(WeeklyPlan).where(WeeklyPlan.user_id == user_id).order_by(WeeklyPlan.week_number)).all()
     return [plan_response(plan) for plan in plans]
 
 
 @app.post("/api/v1/users/{user_id}/check-ins", response_model=AdaptationResponse, status_code=201)
-def create_check_in(user_id: int, payload: CheckInCreate, db: Session = Depends(get_db)) -> AdaptationResponse:
+def create_check_in(user_id: int, payload: CheckInCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> AdaptationResponse:
+    require_owner(user_id, current_user)
     user = get_user_or_404(user_id, db)
     current_plan = db.scalar(select(WeeklyPlan).where(
         WeeklyPlan.user_id == user_id, WeeklyPlan.week_number == payload.week_number
@@ -134,9 +150,10 @@ def create_check_in(user_id: int, payload: CheckInCreate, db: Session = Depends(
         raise HTTPException(status_code=404, detail="Complete this week's plan before checking in")
     adherence = min(100.0, round(payload.workouts_completed / max(user.profile.training_days, 1) * 100, 1))
     check_in = CheckIn(user_id=user_id, adherence_percent=adherence, **payload.model_dump())
-    adjustment = adapt_calorie_target(
-        current_plan.calorie_target_kcal, adherence, payload.hunger_level, payload.energy_level
-    )
+    previous = db.scalar(select(CheckIn).where(CheckIn.user_id == user_id).order_by(CheckIn.week_number.desc()))
+    previous_weight = previous.weight_kg if previous else user.profile.weight_kg
+    weight_change_percent = (payload.weight_kg - previous_weight) / previous_weight * 100
+    adjustment = safe_adaptation(current_plan.calorie_target_kcal, adherence, payload.hunger_level, payload.energy_level, weight_change_percent)
     provider = get_plan_provider()
     context = (
         f"Last week adherence was {adherence}%. Hunger was {payload.hunger_level}/5 and "
@@ -163,6 +180,23 @@ def create_check_in(user_id: int, payload: CheckInCreate, db: Session = Depends(
 
 
 @app.get("/api/v1/users/{user_id}/check-ins", response_model=list[CheckInResponse])
-def list_check_ins(user_id: int, db: Session = Depends(get_db)) -> list[CheckIn]:
+def list_check_ins(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[CheckIn]:
+    require_owner(user_id, current_user)
     get_user_or_404(user_id, db)
     return list(db.scalars(select(CheckIn).where(CheckIn.user_id == user_id).order_by(CheckIn.week_number)).all())
+
+
+@app.get("/api/v1/users/{user_id}/dashboard", response_model=DashboardResponse)
+def dashboard(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> DashboardResponse:
+    require_owner(user_id, current_user)
+    get_user_or_404(user_id, db)
+    plans = db.scalars(select(WeeklyPlan).where(WeeklyPlan.user_id == user_id).order_by(WeeklyPlan.week_number)).all()
+    check_ins = {item.week_number: item for item in db.scalars(select(CheckIn).where(CheckIn.user_id == user_id)).all()}
+    return DashboardResponse(points=[DashboardPoint(
+        week_number=plan.week_number,
+        weight_kg=check_ins.get(plan.week_number).weight_kg if check_ins.get(plan.week_number) else None,
+        adherence_percent=check_ins.get(plan.week_number).adherence_percent if check_ins.get(plan.week_number) else None,
+        calorie_target_kcal=plan.calorie_target_kcal,
+        hunger_level=check_ins.get(plan.week_number).hunger_level if check_ins.get(plan.week_number) else None,
+        energy_level=check_ins.get(plan.week_number).energy_level if check_ins.get(plan.week_number) else None,
+    ) for plan in plans])

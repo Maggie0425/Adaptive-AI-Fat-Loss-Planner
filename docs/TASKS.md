@@ -16,7 +16,7 @@ Finish each phase before expanding the feature list.
 - [x] Scaffold `frontend/` with React, TypeScript, and Vite.
 - [x] Scaffold `backend/` with FastAPI and pytest.
 - [x] Add a PostgreSQL-compatible SQLAlchemy data layer and first migration.
-- [ ] Add CI checks for frontend and backend tests and linting.
+- [x] Add CI checks for frontend and backend tests and linting.
 - [x] Document exact install and run commands in the README.
 
 **Done when:** a teammate can clone the repository, start both applications,
@@ -56,12 +56,15 @@ plan without silently making extreme changes.
 
 ## Phase 5 — Dashboard and demo readiness
 
-- [ ] Chart weight and adherence trends.
+- [x] Chart calorie targets and show weight and adherence trends.
 - [x] Show the current plan and plan-change history.
 - [ ] Add loading, empty, validation, and API-error states.
 - [ ] Test representative demo scenarios and mobile layouts.
 - [ ] Deploy frontend and backend, then add both links to Devpost.
 - [ ] Capture product media: dashboard, plan, check-in, adaptation, progress.
+
+Deployment configuration is complete. The remaining deployment and media items
+require linking the repository to the team's Vercel and Render accounts.
 
 ## Recommended first assignments
 
