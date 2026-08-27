@@ -34,6 +34,7 @@ Thumbs.db
 *.log
 *.sqlite
 *.sqlite3
+*.db
 
 # Deployment tooling
 .vercel/

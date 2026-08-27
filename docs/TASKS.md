@@ -15,7 +15,7 @@ Finish each phase before expanding the feature list.
 
 - [x] Scaffold `frontend/` with React, TypeScript, and Vite.
 - [x] Scaffold `backend/` with FastAPI and pytest.
-- [ ] Add PostgreSQL locally and create the first migration.
+- [x] Add a PostgreSQL-compatible SQLAlchemy data layer and first migration.
 - [ ] Add CI checks for frontend and backend tests and linting.
 - [x] Document exact install and run commands in the README.
 
@@ -35,21 +35,21 @@ results without an LLM call.
 
 ## Phase 3 — Initial weekly plan
 
-- [ ] Define a versioned structured plan schema.
-- [ ] Build prompts from validated calculations and preferences.
-- [ ] Validate AI output and handle timeouts or malformed responses.
-- [ ] Save the generated plan and show its meals, workouts, and rationale.
-- [ ] Add a clearly visible general-wellness disclaimer.
+- [x] Define a structured plan schema.
+- [x] Build prompts from validated calculations and preferences.
+- [x] Validate OpenAI output with strict JSON Schema and provide a mock fallback.
+- [x] Save the generated plan and show its meals, workouts, and rationale.
+- [x] Add a clearly visible general-wellness disclaimer.
 
 **Done when:** a user receives and can revisit one valid weekly plan.
 
 ## Phase 4 — Check-in and adaptation
 
-- [ ] Build the weekly check-in form.
-- [ ] Calculate adherence and progress deterministically.
-- [ ] Define bounded adjustment rules and safety limits.
-- [ ] Generate the next plan using the prior plan plus check-in results.
-- [ ] Show what changed and why.
+- [x] Build the weekly check-in form.
+- [x] Calculate workout adherence deterministically.
+- [x] Define bounded adjustment rules and safety limits.
+- [x] Generate the next plan using the prior plan plus check-in results.
+- [x] Show what changed and why.
 
 **Done when:** the end-to-end feedback loop produces a traceable second-week
 plan without silently making extreme changes.
@@ -57,7 +57,7 @@ plan without silently making extreme changes.
 ## Phase 5 — Dashboard and demo readiness
 
 - [ ] Chart weight and adherence trends.
-- [ ] Show current plan, check-in history, and plan-change history.
+- [x] Show the current plan and plan-change history.
 - [ ] Add loading, empty, validation, and API-error states.
 - [ ] Test representative demo scenarios and mobile layouts.
 - [ ] Deploy frontend and backend, then add both links to Devpost.

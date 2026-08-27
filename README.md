@@ -38,8 +38,8 @@ acceptance criteria.
 | --- | --- |
 | Frontend | React, TypeScript |
 | Backend API | Python, FastAPI |
-| Database | PostgreSQL |
-| AI planning | LLM API with structured output |
+| Database | SQLAlchemy + Alembic; SQLite locally, PostgreSQL-ready |
+| AI planning | OpenAI Responses API with strict structured output; mock fallback |
 | Charts | Recharts |
 | Version control | Git and GitHub |
 | Deployment | Vercel (frontend), Render (backend) |
@@ -104,6 +104,28 @@ uvicorn app.main:app --reload
 Open `http://localhost:5173`. The API documentation is available at
 `http://localhost:8000/docs`. Never commit `.env` or API keys.
 
+By default the backend uses a local SQLite database and a deterministic mock
+weekly-plan provider, so the complete flow works without external accounts.
+Set `DATABASE_URL` to a PostgreSQL connection string for PostgreSQL. Set
+`OPENAI_API_KEY` and `OPENAI_MODEL` to enable live OpenAI-generated plans.
+API responses are requested with strict JSON Schema validation and `store=False`.
+
+Apply database migrations with:
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+### Implemented flow
+
+1. Save and retrieve a user profile.
+2. Calculate BMI, BMR, TDEE, and a moderate calorie target.
+3. Generate a structured week-one meal and workout plan.
+4. Submit weekly weight, adherence, hunger, energy, difficulty, and feedback.
+5. Apply a bounded, explainable adjustment and generate the following week.
+6. Review plan history in the frontend.
+
 ### Verification
 
 ```bash
@@ -134,9 +156,9 @@ Suggested branch names: `feature/profile-form`, `feature/fitness-calculator`,
 
 ## Current status
 
-The first vertical slice is implemented: a profile form calls the FastAPI
-calculation endpoint and displays BMI, BMR, TDEE, and a calorie target. The next
-milestone is persistence and the structured weekly-plan contract.
+The adaptive MVP flow is implemented from persistent profile creation through
+weekly check-in and next-week plan generation. Authentication, production
+database provisioning, richer charts, and deployment remain future work.
 
 ## License
 
