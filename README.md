@@ -38,6 +38,9 @@ to diagnose, treat, or replace advice from a qualified healthcare professional.
    energy, difficulty, and written feedback.
 5. **Adaptive adjustment** — explain and apply bounded changes to the next plan.
 6. **Progress dashboard** — show weight, adherence, and plan changes over time.
+7. **Seven-day cooking guide** — translate each calorie target into daily
+   breakfast, lunch, dinner, and snack budgets with dish calories, ingredients,
+   seasonings, preparation time, and step-by-step cooking instructions.
 
 See [docs/TASKS.md](docs/TASKS.md) for the recommended delivery order and MVP
 acceptance criteria.
